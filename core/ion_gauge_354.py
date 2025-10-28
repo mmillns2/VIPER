@@ -91,19 +91,7 @@ class IonGauge354:
             print("Serial connection closed.")
 
     # --- Communication ---
-    def calc_crc(data_bytes):
-        """Compute CRC-16 (Modbus-style) over given data bytes."""
-        crc = 0xFFFF
-        for byte in data_bytes:
-            crc ^= byte
-            for _ in range(8):
-                if crc & 1:
-                    crc = (crc >> 1) ^ 0xA001
-                else:
-                    crc >>= 1
-        return crc.to_bytes(2, byteorder='little')
-
-    def send_command_old(self, cmd):
+    def send_command(self, cmd):
         """Send an RS485 command with CR termination."""
         if self.ser.isOpen():
             try: 
@@ -120,7 +108,7 @@ class IonGauge354:
         return None
 
     # this needs checking + testing
-    def read_pressure_old(self):
+    def read_pressure(self):
         """Read pressure from the gauge."""
         resp = self.send_command("RD")
         if resp is not None:
@@ -135,71 +123,13 @@ class IonGauge354:
                     return None
         return None
 
-    def send_command(self, cmd, payload=b''):
-        """
-        Send a binary RS485 command to the 392 gauge and return raw response bytes.
-        cmd: single byte (e.g., 0x02 for 'Read IG pressure only')
-        payload: any data bytes (often empty)
-        """
-        if not self.ser or not self.ser.is_open:
-            raise RuntimeError("Serial port not open")
-
-        start = b'!'
-        addr = int(self.address, 16).to_bytes(1, 'big')
-        body = addr + bytes([cmd]) + payload
-        crc = calc_crc(body)
-        packet = start + body + crc
-
-        self.ser.reset_input_buffer()
-        self.ser.write(packet)
-        self.ser.flush()
-        time.sleep(0.1)
-
-        # Responses start with '*'
-        resp = self.ser.read(20)  # enough for most responses
-        return resp
-
-    def read_pressure(self):
-        """
-        Read Ion Gauge pressure from the 392 series gauge.
-        Response format: *<01><02><uu><yyyyyyyy><CRC>
-        Where <yyyyyyyy> is a 4-byte IEEE754 float.
-        """
-        cmd = 0x02
-        resp = self.send_command(cmd)
-        if not resp or len(resp) < 10 or resp[0] != ord('*'):
-            print("Invalid or empty response")
-            return None
-
-        try:
-            addr = resp[1]
-            if addr != int(self.address, 16):
-                print(f"Unexpected address: {addr}")
-                return None
-
-            cmd_echo = resp[2]
-            if cmd_echo != cmd:
-                print(f"Unexpected cmd echo: {cmd_echo}")
-                return None
-
-            unit = resp[3]  # pressure units (not always relevant)
-            pressure_bytes = resp[4:8]
-            pressure = struct.unpack('>f', pressure_bytes)[0]  # big-endian float
-
-            return pressure
-
-        except Exception as e:
-            print(f"Error decoding pressure: {e}")
-            return None
-
-
     # --- Streaming and Writing ---
     def stream(self):
         """Continuously read pressure values."""
         self._running = True
         while self._running and ((self._curr_itteration < self.duration) or self.duration == 0):
             pressure = self.read_pressure()
-            timestamp = (datetime.now() - self._start_time).isoformat()
+            timestamp = (datetime.now() - self._start_time).to_seconds()
             if pressure is not None:
                 print(f"[{self._curr_itteration}] [{timestamp}s] Pressure: {pressure} Torr")
                 if self.store_data:

@@ -40,10 +40,16 @@ duration = 300                                      # total number of pressure r
 
 - Clone github repository
 
-- Then run the command:
+- Then, in the same directory as the flake.nix file, run the command:
 
 ```
 nix develop
+```
+
+- or if that doesn't work, try:
+
+```
+nix develop .#default
 ```
 
 - This enters you into a nix shell with all the required packages and variable names
