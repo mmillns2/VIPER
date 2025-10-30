@@ -77,7 +77,8 @@ class IonGauge354:
         )
 
         try: 
-            ser.open()
+            if not self.ser.isOpen():
+                self.ser.open()
         except Exception as e:
             print("error open serial port: " + str(e))
             exit()
@@ -93,72 +94,88 @@ class IonGauge354:
     # --- Communication ---
     def send_command(self, cmd):
         """Send an RS485 command with CR termination."""
-        if self.ser.isOpen():
+        if self.ser and self.ser.isOpen():
             try: 
                 self.ser.flushInput()   # flush input buffer, discarding all its contents
                 self.ser.flushOutput() # flush output buffer, aborting current output and discard all that is in buffer
                 full_cmd = f"#{self.address}{cmd}\r"
                 print(f"Writing: {full_cmd}")
+                time.sleep(self.min_delay) # taken from manual - might have to increase this
                 self.ser.write(full_cmd.encode("ascii"))
-                time.sleep(0.05) # taken from manual - might have to increase this
+                time.sleep(self.min_delay) # taken from manual - might have to increase this
                 response = self.ser.readline().decode("ascii", errors="ignore").strip()
                 return response
             except Exception as e:
                 print("error communicating: " + str(e))
         return None
 
-    # this needs checking + testing
-    def read_pressure(self):
-        """Read pressure from the gauge."""
-        resp = self.send_command("RD")
-        if resp is not None:
-            if resp.startswith(f"*{self.address}_"):
+    def extract_val(self, output):
+        """Convert pressure output from gauge into a float."""
+        if output is not None:
+            if output.startswith(f"*{self.address} "):
                 try:
-                    _, val = resp.split("_", 1)
-                    pressure = float(val)
-                    # if pressure >= 9.90e9:
-                    #     return None # when the gauge is OFF, pressure = 9.90E+09 => ignore it
-                    return pressure
+                    _, val_str = resp.split(" ", 1)
+                    val = float(val_str)
+                    return val
                 except ValueError:
                     return None
         return None
+
+    def read_pressures(self):
+        """Read Ionisation, CG1, and CG2 pressures."""
+        ion_resp = self.send_command("RD")
+        cg1_resp = self.send_command("RDCG1")
+        cg2_resp = self.send_command("RDCG2")
+        ion_val = self.extract_val(ion_resp)
+        cg1_val = self.extract_val(cg1_resp)
+        cg2_val = self.extract_val(cg2_resp)
+        pressures = np.array([ion_val, cg1_val, cg2_val])
+        return pressures
 
     # --- Streaming and Writing ---
     def stream(self):
         """Continuously read pressure values."""
         self._running = True
         while self._running and ((self._curr_itteration < self.duration) or self.duration == 0):
-            pressure = self.read_pressure()
+            pressures = self.read_pressures()
             timestamp = (datetime.now() - self._start_time).to_seconds()
-            if pressure is not None:
-                print(f"[{self._curr_itteration}] [{timestamp}s] Pressure: {pressure} Torr")
+            if pressures is not None:
+                print(f"[{self._curr_itteration}] [{timestamp}s] Pressures (ION,CG1,CG2): {pressures} Torr")
                 if self.store_data:
-                    self.write_to_h5(self._curr_itteration, timestamp, pressure)
+                    self.write_to_h5(self._curr_itteration, timestamp, pressures[0], pressures[1], pressures[2])
             else:
                 print(f"[{self._curr_itteration}] [{timestamp}s] Read failed.")
             self._curr_itteration += 1
             time.sleep(self.interval)
 
-    def write_to_h5(self, index, timestamp, pressure):
-        """Append timestamped pressure data to HDF5."""
+    def write_to_h5(self, index, timestamp, ion_pressure, cg1_pressure, cg2_pressure):
+        """Append timestamped pressures data to HDF5."""
         if not self.h5file:
             return
         with h5py.File(self.h5file, "a") as f:
-            if "pressure" not in f:
+            if "Ionisation" not in f:
                 maxshape = (None,)
-                f.create_dataset("index", (0,), maxshape=maxshape, dtype="i")
-                f.create_dataset("timestamp", (0,), maxshape=maxshape, dtype=h5py.string_dtype())
-                f.create_dataset("pressure", (0,), maxshape=maxshape, dtype="f")
-            in_ds = f["index"]
-            ts_ds = f["timestamp"]
-            pr_ds = f["pressure"]
+                f.create_dataset("Index", (0,), maxshape=maxshape, dtype="i4")
+                f.create_dataset("Timestamp", (0,), maxshape=maxshape, dtype="f8")
+                f.create_dataset("Ionisation", (0,), maxshape=maxshape, dtype="f8")
+                f.create_dataset("CG1", (0,), maxshape=maxshape, dtype="f8")
+                f.create_dataset("CG2", (0,), maxshape=maxshape, dtype="f8")
+            in_ds = f["Index"]
+            ts_ds = f["Timestamp"]
+            ion_ds = f["Ionisation"]
+            cg1_ds = f["CG1"]
+            cg2_ds = f["CG2"]
             n = in_ds.shape[0]
             in_ds.resize((n + 1,))
             ts_ds.resize((n + 1,))
-            pr_ds.resize((n + 1,))
+            ion_ds.resize((n + 1,))
+            cg1_ds.resize((n + 1,))
+            cg2_ds.resize((n + 1,))
             in_ds[n] = index
             ts_ds[n] = timestamp
-            pr_ds[n] = pressure
+            ion_ds[n] = ion_pressure if not ion_pressure else 0.0
+            cg1_ds[n] = cg1_pressure if not cg1_pressure else 0.0
+            cg2_ds[n] = cg2_pressure if not cg2_pressure else 0.0
 
     # --- Run Appllication ---
     def run_app(self):
