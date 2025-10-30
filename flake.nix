@@ -17,6 +17,7 @@
           pandas
           matplotlib
           pyserial
+          pytest_7
         ]);
       in {
         devShells.default = pkgs.mkShell {
