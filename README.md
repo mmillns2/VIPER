@@ -93,7 +93,7 @@ viper configs/gauge/example-gauge.conf configs/recording/5-min-intervals.conf
 - The structure of the h5 file is:
 
 ```
-Index | Timestamp (s) | Ionisation Gauge (Torr) | Channel Gauge 1 (Torr) | Channel Gauge 2 (Torr)
+Index | Timestamp (s) | Ionisation Gauge (Torr) | Convection Gauge 1 (Torr) | Convection Gauge 2 (Torr)
 ```
 
 - If the Ion Gauge 392 doesn't give back a temperature after being prompted to, that pressure value will be stored as 0. This is consistent with what is displayed on the screen of the Ion Gauge 392. 
