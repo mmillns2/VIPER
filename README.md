@@ -96,6 +96,10 @@ viper configs/gauge/example-gauge.conf configs/recording/5-min-intervals.conf
 Index | Timestamp (s) | Ionisation Gauge (Torr) | Convection Gauge 1 (Torr) | Convection Gauge 2 (Torr)
 ```
 
-- If the Ion Gauge 392 doesn't give back a temperature after being prompted to, that pressure value will be stored as 0. This is consistent with what is displayed on the screen of the Ion Gauge 392. 
+- If the Ion Gauge 392 doesn't give back a pressure after being prompted to, that pressure value will be stored as 0.  
 
 - On top of storing data to h5 files, VIPER will also continuously print data read from the Ion Gauge 392 to the console.
+
+- If the Ionisation Gauge is turned off, the gauge will send a pressure of about 9.8 x 10^8 Torr. That pressure will be printed to the console but will be stored as 0 Torr in the h5 file. 
+
+- If either of the Convection Gauges are turned off, that gauge won't send a pressure back. That pressure will be converted to None in the python code and that None is printed to the console. If this occurs, similar to the Ionisation Gauge, 0 Torr will be stored in the h5 file. 
