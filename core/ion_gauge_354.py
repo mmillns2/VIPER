@@ -173,9 +173,12 @@ class IonGauge354:
             cg2_ds.resize((n + 1,))
             in_ds[n] = index
             ts_ds[n] = timestamp
-            ion_ds[n] = ion_pressure if not ion_pressure else 0.0
-            cg1_ds[n] = cg1_pressure if not cg1_pressure else 0.0
-            cg2_ds[n] = cg2_pressure if not cg2_pressure else 0.0
+            if ion_pressure == None or ion_pressure > 9.89e9: ion_pressure = 0.0 
+            if cg1_pressure == None: cg1_pressure = 0.0 
+            if cg2_pressure == None: cg2_pressure = 0.0 
+            ion_ds[n] = ion_pressure
+            cg1_ds[n] = cg1_pressure
+            cg2_ds[n] = cg2_pressure
 
     # --- Run Appllication ---
     def run_app(self):
