@@ -114,7 +114,7 @@ class IonGauge354:
         if output is not None:
             if output.startswith(f"*{self.address} "):
                 try:
-                    _, val_str = resp.split(" ", 1)
+                    _, val_str = output.split(" ", 1)
                     val = float(val_str)
                     return val
                 except ValueError:
@@ -138,7 +138,7 @@ class IonGauge354:
         self._running = True
         while self._running and ((self._curr_itteration < self.duration) or self.duration == 0):
             pressures = self.read_pressures()
-            timestamp = (datetime.now() - self._start_time).to_seconds()
+            timestamp = (datetime.now() - self._start_time).total_seconds()
             if pressures is not None:
                 print(f"[{self._curr_itteration}] [{timestamp}s] Pressures (ION,CG1,CG2): {pressures} Torr")
                 if self.store_data:
