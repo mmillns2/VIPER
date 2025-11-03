@@ -25,6 +25,15 @@ sudo apt install nix-bin
 experimental-features = nix-command flakes
 ```
 
+## Ion Gauge 392
+
+- VIPER makes use of the KJLC ASCII protocol provided by the Ion Gauge 392.
+
+- By default, the Ion Gauge 392 is set to the BINARY protocol. To change this, go to "SETUP COMMS" using the screen of the Ion Gauge 392. Then, scroll down to "FORMAT" and change from "BINARY" to "ASCII".
+
+> [!NOTE]
+> VIPER should work with other Ion Gauge models that make use of the KJLC ASCII protocol format, such as the KJLC 354 and 300 series convection gauge models. BUT, VIPER has not been tested on these other models.
+
 ## Configuration
 
 - There are two configuration files within VIPER:
@@ -53,6 +62,9 @@ h5file = ${VIPER_DIR}/data/vacuum_data_5min.h5      # path to h5 file
 interval = 5.0                                      # time between each recording in seconds
 duration = 300                                      # total number of pressure recordings (0 for infinite)
 ```
+
+> [!WARNING]
+> Currently the interval is about 3 seconds shorter than how long there actually is between each measurement. This is due to inefficient writes to h5 files. Therefore, if you want to record measurements every 10 seconds, an interval of 7.0 seconds will give close to 10 second intervals.
 
 ## How to use
 
