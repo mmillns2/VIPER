@@ -1,4 +1,4 @@
-# VIPER — Vacuum Ionisation Pressure Extraction Reporter
+# VIPER — Vacuum Ionisation Pressure Experimental Readout
 
 VIPER is a Python-based tool for reading pressure data from a Kurt J. Lesker 392 Series Ionization Gauge and logging it to HDF5 files.
 
